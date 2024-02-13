@@ -429,7 +429,7 @@ $$
 
 :::{.callout-note title="Answer"}
 
-$\hat{\beta}$ represents the estimated average treatment effect of the intervention (difference in the expected outcome between treated and untreated units, after adjusting for the baseline level of the outcome represented by $\hat{\alpha}$)
+$\hat{\beta}$ represents the estimated average treatment effect of the intervention (difference in the expected outcome between treated and untreated units, after adjusting for the baseline level of the outcome represented by $\hat{\alpha}$).
 
 * Numerator: $\sum_{i=1}^n A_i\left(Y_i-\hat{\alpha}\right)$ sums up the adjusted outcomes (adjusted by subtracting $\hat{\alpha}$) for the treated units only. This adjustment removes the estimated baseline level of the outcome, isolating the effect of the treatment.
 * Denominator: $m$ normalizes the sum by the number of treated units.
