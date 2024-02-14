@@ -264,7 +264,7 @@ $$
 
 :::{.callout-note title="Answer"}
 
-We've demonstrated that when we further stratify the data by gender, we find an opposite trend in treatment effect compared to what we observed in the overall data. This phenomenon is commonly known as Simpson's Paradox. It highlights that (1) conclusions based on aggregated data can be deceptive and might not tell the full story, and (2) it's essential to consider stratification by relevant covariates early in the data analysis process to mitigate opportunities for misinterpretation down the road.
+We've demonstrated that when we further stratify the data by gender, we find an opposite trend in treatment effect compared to what we observed in the overall data. This phenomenon is commonly known as **Simpson's Paradox**. It highlights that (1) conclusions based on aggregated data can be deceptive and might not tell the full story, and (2) it's essential to consider stratification by relevant covariates early in the data analysis process to mitigate opportunities for misinterpretation at the study's conclusion.
 
 :::
 
@@ -388,7 +388,7 @@ ggplot(ggdata, aes(x = SampleSize, y = Power, color = Hypothesis, group = Hypoth
 
 ```
 
-Interpretation: The weak null should always be more powerful than the sharp null (since the sharp null is contained within the weak null). That said, we are not surprised to see that the power is very similar between the hypotheses because...
+Theoretically, Neyman's (weak) null should be more powerful than Fisher's (sharp) null because the sharp null implies the weak null. In this simulation, we observe that the weak null consistently exhibits higher power than the sharp null, though the difference in power between the two tests is slight. Hence, based on our simulation results, we conclude that within the context of a CRE, evidence against the weak null also argues against the sharp null and will typically lead to similar conclusions.
 
 :::
 
@@ -412,6 +412,7 @@ $$
 &=-\frac{1}{ n}\left( \sum_{i=1}^nY_i-n\alpha-\beta\sum_{i=1}^n A_i\right)\\ 
 &=-\frac{1}{ n} \sum_{i=1}^nY_i+\alpha+\beta\frac{1}{ n}\sum_{i=1}^nA_i\\ 
 &=-\bar{Y}+\alpha+\beta\bar{A}\\ \\
+0&\stackrel{\text{set}}{=}-\bar{Y}+\hat{\alpha}+\hat{\beta}\bar{A}\\
 &\Rightarrow \hat{\alpha}= \bar{Y}-\hat{\beta}\bar{A}
 \end{aligned}
 $$
@@ -424,59 +425,35 @@ $$
 &=-\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\alpha \frac{1}{ n}\sum_{i=1}^nA_i+\beta \frac{1}{ n}\sum_{i=1}^nA_i^2\\ 
 &=-\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\alpha \frac{1}{ n}\sum_{i=1}^nA_i+\beta \frac{1}{ n}\sum_{i=1}^nA_i\\ 
 &=-\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\alpha \bar{A}+\beta \bar{A} \\ \\
-&\Rightarrow \hat{\beta}=\frac{\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\alpha \bar{A}}{\bar{A}} = \frac{\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\left(\bar{Y}-\hat{\beta}\bar{A}\right) \bar{A}}{\bar{A}} =
-\frac{\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\bar{Y}\bar{A}-\hat{\beta}\bar{A}^2}{\bar{A}}
+0&\stackrel{\text{set}}{=}-\frac{1}{ n} \sum_{i=1}^n Y_iA_i+\hat{\alpha} \bar{A}+\hat{\beta} \bar{A} \\
+&=\frac{1}{ m} \sum_{i=1}^n Y_iA_i-\hat{\alpha} -\hat{\beta}  \quad \quad \text{Pulling out }\bar{A}=\frac{m}{n} \text{ and fliping signs} \\
+&=\frac{1}{ m} \sum_{i=1}^n Y_iA_i-\bar{Y}+\hat{\beta}\bar{A} -\hat{\beta}  \quad \quad \text{Substituting } \hat{\alpha}= \bar{Y}-\hat{\beta}\bar{A}\\
+& =\frac{1}{m} \sum_{i=1}^n Y_i A_i-\bar{Y}-\hat{\beta} \underbrace{\left(1-\bar{A}\right)}_{\frac{n-m}{n}} \\
+\Rightarrow\hat{\beta} & =\frac{n}{n-m}\left(\frac{1}{m} \sum_{i=1}^n Y_i A_i-\frac{1}{n} \sum_{i=1}^n Y_i\right) \\
+& =\frac{n}{n-m} \sum_{i=1}^n\left(\frac{Y_i A_i}{m}-\frac{Y_i}{n}\right) \\
+& =\frac{n}{n-m} \sum_{i=1}^n\left(\frac{Y_i A_i}{m}-\frac{Y_i A_i+Y_i\left(1-A_i\right)}{n}\right) \\
+& =\frac{n}{n-m} \sum_{i=1}^n\left(\frac{Y_i A_i n-Y_i A_i m-Y_i\left(1-A_i\right) m}{m n}\right) \\
+& =\frac{n}{n-m} \sum_{i=1}^n\left(\frac{Y_i A_i(n-m)-Y_i\left(1-A_i\right) m}{m n}\right) \\
+& =\frac{n}{n-m} \sum_{i=1}^n\left(\frac{Y_i A_i(n-m)}{m n}\right)-\frac{n}{n-m} \sum_{i=1}^n\left(\frac{Y_i\left(1-A_i\right) m}{m n}\right) \\
+& =\frac{1}{m} \sum_{i=1}^n Y_i A_i-\frac{1}{n-m} \sum_{i=1}^n Y_i\left(1-A_i\right) \\
+& =\overline{Y_1}-\overline{Y_0}
 \end{aligned}
 $$
 
-
-
-
-<!--
-$$
-\begin{aligned}
-\frac{\partial}{\partial \alpha} \frac{1}{2 n} \sum_{i=1}^n\left(Y_i-\alpha-\beta A_i\right)^2 &=
-\frac{1}{2 n} \sum_{i=1}^n2\left(Y_i-\alpha-\beta A_i\right)\left(-1\right) \\ 
-&=-\frac{1}{ n}\left( \sum_{i=1}^nY_i-n\alpha-\sum_{i=1}^n\beta A_i\right)\\ 
-&=\alpha-\frac{1}{ n}\sum_{i=1}^n\left( Y_i-\beta A_i\right)\\ 
-0&=\hat{\alpha}-\frac{1}{ n}\sum_{i=1}^n\left( Y_i-\hat{\beta} A_i\right)\\ \\
-\hat{\alpha}&=\frac{1}{ n}\sum_{i=1}^n\left( Y_i-\hat{\beta} A_i\right)\\ 
-\end{aligned}
-$$
-
-$$
-\begin{aligned}
-\frac{\partial}{\partial \beta} \frac{1}{2 n} \sum_{i=1}^n\left(Y_i-\alpha-\beta A_i\right)^2
-&=\frac{1}{2 n} \sum_{i=1}^n2\left(Y_i-\alpha-\beta A_i\right)\left(-A_i\right) \\ 
-&=-\frac{1}{ n} \sum_{i=1}^n \left(Y_iA_i-\alpha A_i-\beta A_i^2\right)\\ 
-&=-\frac{1}{ n} \sum_{i=1}^n \left(Y_iA_i-\alpha A_i\right)+\frac{1}{ n}\sum_{i=1}^n\beta A_i^2\\ \\ 
-&0=-\frac{1}{ n} \sum_{i=1}^n \left(Y_iA_i-\hat{\alpha} A_i\right)+\hat{\beta}\frac{1}{ n}\sum_{i=1}^nA_i^2 \\ 
--\hat{\beta}\frac{1}{ n}\sum_{i=1}^nA_i^2
-&=-\frac{1}{ n} \sum_{i=1}^n \left(Y_iA_i-\hat{\alpha} A_i\right)\\ \\
-\hat{\beta}
-&=\frac{ \sum_{i=1}^n \left(Y_iA_i-\hat{\alpha} A_i\right)}{\sum_{i=1}^nA_i^2} = \frac{ \sum_{i=1}^n A_i\left(Y_i-\hat{\alpha} \right)}{m}
-\end{aligned}
-$$
-
-Now, plugging in our expression for $\hat{\alpha}$ into $\hat{\beta}$:
-
-$$
-\hat{\beta}= \frac{ \sum_{i=1}^n A_i\left(Y_i-\frac{1}{ n}\sum_{i=1}^n\left( Y_i-\hat{\beta} A_i\right) \right)}{m}
-$$
-
--->
+Thus we have $\hat{\beta}=\overline{Y_1}-\overline{Y_0}$, which can be interpreted as the difference in average outcomes for the treated vs. untreated units.
 
 :::
 
 ## b) Is $\hat{\beta}$ a valid estimator of the ATE? Explain your answer.
 
 :::{.callout-note title="Answer"}
-<!--
-$\hat{\beta}$ represents the estimated average treatment effect of the intervention (difference in the expected outcome between treated and untreated units, after adjusting for the baseline level of the outcome represented by $\hat{\alpha}$).
 
-* Numerator: $\sum_{i=1}^n A_i\left(Y_i-\hat{\alpha}\right)$ sums up the adjusted outcomes (adjusted by subtracting $\hat{\alpha}$) for the treated units only. This adjustment removes the estimated baseline level of the outcome, isolating the effect of the treatment.
-* Denominator: $m$ normalizes the sum by the number of treated units.
--->
+The ATE is defined as the difference in the expected outcomes between the treated and control groups in the population:$\theta^{\operatorname{ATE}}=\mathbb{E}\left[Y^{a=1}-Y^{a=0}\right]$. In the context of a CRE, treatment assignment is random. The implication of random treatment assignment is that $\mathbb{E}[\overline{Y_1}]$ consistently estimates $\mathbb{E}[Y^{a=1}]$ for the treatment group and $\mathbb{E}[\overline{Y_0}]$ consistently estimates $\mathbb{E}[Y^{a=0}]$ for the control group. Thus, under the CRE assumption, $\hat{\beta}$ is an unbiased and valid estimator of the ATE.
+
+$$
+\mathbb{E}[\hat{\beta}]=\mathbb{E}[\overline{Y_1}-\overline{Y_0}]= \mathbb{E}[Y^{a=1} - Y^{a=0}] = \theta^{\text{ATE}}
+$$
+
 :::
 
 
