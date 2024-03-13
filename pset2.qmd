@@ -1,0 +1,681 @@
+---
+title: "Problem Set #2"
+subtitle: "BST 258: Causal Inference -- Theory and Practice"
+author: "Kimberly Greco"
+date: ""
+format:
+  pdf:
+    documentclass: scrartcl
+    papersize: letter
+    fontsize: 11pt
+    geometry:
+      - margin=1in
+      - heightrounded
+    number-sections: false
+    colorlinks: true
+    link-citations: true
+    callout-appearance: simple
+    callout-icon: false
+    # figure options
+    fig-width: 6
+    fig-asp: 0.618
+    fig-cap-location: bottom
+    # code block options
+    code-line-numbers: false
+    code-block-bg: false
+    highlight-style: nord
+bibliography: refs.bib
+---
+
+```{r}
+#| echo: false
+#| message: false
+#| label: global-setup
+library(here)
+```
+
+\begin{center}
+\href{https://github.com/kfgreco/BST-258-Homework-2}{Link to GitHub Repository}
+\end{center}
+
+{{< pagebreak >}}
+
+# Question 1: Inverse Probability Weighting
+
+Let's delve into inverse probability weighting (IPW methods, an example of which was the HorvitzThompson (HT) estimator that we examined. Using data from the National Health and Nutrition Examination Survey I (NHANES) Epidemiologic Follow-Up Study (NHEFS), we will aim to estimate the effect of smoking cessation on subsequent weight gain. Detailed information on the NHEFS, including publicly available datasets and documentation, may be accessed at https://wwwn.cdc.gov/nchs/nhanes/nhefs/. A subset of the NHEFS data has been provided on Canvas for your use in the following exercises.
+
+Our objective is to determine the average treatment effect (ATE), $\theta^{\mathrm{ATE}}=\mathbb{E}\left[Y^{1}-Y^{0}\right]$, of smoking cessation ( $A$, the treatment or exposure) on weight gain ( $Y$, the outcome). The dataset comprises measures on 1,629 cigarette smokers, aged between 25 and 74, who participated in the NHEFS and underwent both a baseline visit and a follow-up visit approximately a decade apart. When estimating the causal effect of smoking cessation on weight gain, we will restricted the analysis to the 1,566 individuals with a body weight measurement at the end of follow-up in 1982. For now, we ignore the potential for selection bias by ignoring those individuals. As this is an observational study, we will assume that the following nine covariates, all measured at the baseline visit, are sufficient to adjust for confounding: sex-at-birth ( 0 : male, 1: female), age (in years), race/ethnicity (0: white, 1: other), education (5 categories), intensity and duration of smoking (number of cigarettes per day and years of smoking), physical activity in daily life (3 categories), recreational exercise (3 categories), and weight (in $\mathrm{kg}$ ); $L$ consists in a vector of these nine measured covariates. Throughout this question, you may find it helpful to refer to Technical Point 12.1 of Hernán and Robins (2024) as well as the accompanying discussion of inverse probability weighting.
+
+Conceptually, IP re-weighting produces a pseudo-population in which the confounding influence of the covariates $L$ on the treatment $A$ is effectively negated - that is, $A$ may be viewed as effectively randomized in the pseudo-population. Specifically, in this pseudo-population:
+
+1. $A$ and $L$ are statistically independent, i.e., $A \perp\!\!\!\perp L$.
+
+2. The mean $\mathbb{E}[Y \mid A=a]$ in the pseudo-population mirrors the standardized mean $\sum_{L} \mathbb{E}[Y \mid$ $A=a, L=l] \mathbb{P}(L=l)$ from the unadjusted (original) population.
+
+{{< pagebreak >}}
+
+## Part 1: Theory
+
+### 1. Do we need to invoke conditional exchangeability to derive the two properties stated above? What is implied by conditional exchangeability?
+
+:::{.callout-note title="Answer"}
+
+We do not need to invoke conditional exchangeability ($Y^a \perp\!\!\!\perp A|L$) to derive the two properties stated above; however, if conditional exchangeability holds in the original population, then these properties imply (according to @hernan2023causal) that:
+
+1. The mean of $Y^a$ is the same in the pseudo-population and original population.
+2. Unconditional exchangeability (i.e., no confounding) holds in the pseudo-population.
+3. The counterfactual mean $\mathrm{E}\left[Y^a\right]$ in the original population is equal to $\mathrm{E}_{p s}[Y \mid A=a]$ in the pseudo-population.
+4. Association is causation in the pseudo-population.
+
+:::
+
+### 2. Assume that treatment $A$ takes on a discrete set of values and that for all $L=l$ the probability $\mathbb{P}[A=a \mid L]$ is positive (the positivity assumption). The IP-weighted mean of $Y$ for a given treatment level $a$ may be expressed
+
+$$
+\mathbb{E}\left[\frac{\mathbb{I}(A=a) Y}{\mathbb{P}[A \mid L]}\right] 
+$$
+
+### Demonstrate that under conditional exchangeability, positivity, and consistency, the IPweighted mean matches the counterfactual mean $\mathbb{E}\left[Y^{a}\right]$.
+
+:::{.callout-note title="Answer"}
+
+$$
+\begin{aligned}
+\mathbb{E}\left[\frac{\mathbb{I}(A=a) Y}{\mathbb{P}[A \mid L]}\right]
+&=\mathbb{E}\left[\frac{\mathbb{I}(A=a) Y^a}{\mathbb{P}[A| L]}\right] \quad \quad \quad \quad \quad \quad \quad \quad  \text {By consistency  } (Y=Y^a). \\
+& =\mathbb{E}\left\{\mathbb{E}\left[\left.\frac{\mathbb{I}(A=a) Y^a}{\mathbb{P}[a| L]} \right\rvert\, L\right]\right\} \quad \quad \quad \quad \text { By positivity } (\mathbb{P}(A=a|L=l)>0).\\
+& =\mathbb{E}\left\{\mathbb{E}\left[\left.\frac{\mathbb{I}(A=a)}{\mathbb{P}[a | L]} \right\rvert\, L\right] \mathbb{E}\left[Y^a | L\right]\right\} \quad \quad  \text {By conditional exchangeability } (Y^a \perp\!\!\!\perp A | L) . \\
+& =\mathbb{E}\left\{\mathbb{E}\left[Y^a | L\right]\right\} \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \text {Because } \mathbb{E}\left[\left.\frac{\mathbb{I}(A=a)}{\mathbb{P}[a | L]} \right\rvert\, L\right]=1 . \\
+& =\mathbb{E}\left[Y^a\right] \\
+&
+\end{aligned}
+$$
+
+:::
+
+{{< pagebreak >}}
+
+## Part 2: Application
+
+1. Inverse Probability Weighted Estimation: We will now fit an IPW estimator. For estimating $\mathbb{P}[A=1 \mid L]$ across the strata defined by $L$, you will employ a logistic regression model. This model should predict the conditional probability of quitting smoking, conditioning on all 9 of the confounding variables. Ensure you include both linear and quadratic terms for the quasi-continuous covariates: age, weight, smoking intensity, and smoking duration.
+
+### a) Generate the inverse probability (IP) weights and compare them with the stabilized IP weights. How do the distributions of these two sets of IP weights differ?
+
+:::{.callout-note title="Answer"}
+
+We start by importing the NHEFS data and removing individuals with missing outcome data (n=1566).
+
+```{R}
+
+# Import data
+nhefs <- read.csv("data/nhefs.csv")
+
+# Remove individuals with missing outcome data (n=1566)
+nhefs <- nhefs[!is.na(nhefs$wt82_71), ]
+
+```
+
+Next, we estimate the propensity score to calculate the IP weights and stabilized IP weights as follows:
+
+$$
+\begin{aligned}
+\widehat{W}^{A}&=\frac{1}{\widehat{P}(A=1|L)} \quad \text{for treated group.}\\
+&=\frac{1}{1-\widehat{P}(A=1|L)} \quad \text{for untreated group.}\\
+\widehat{SW}^{A}&=\frac{\widehat{P}(A=1)}{\widehat{P}(A=1|L)} \quad \text{for treated group.}\\
+&=\frac{1-\widehat{P}(A=1)}{1-\widehat{P}(A=1|L)} \quad \text{for untreated group.}
+\end{aligned}
+$$
+
+```{R}
+
+# Fit logisitc propensity score model
+ps.mod <- glm(qsmk ~ sex + age + I(age^2) + race + factor(education) + smokeintensity + I(smokeintensity^2) + smokeyrs + I(smokeyrs^2) + factor(active) + factor(exercise) + wt71 + I(wt71^2),
+           data = nhefs,
+           family = binomial)
+
+# Estimate propensity scores
+nhefs$phat <- predict(ps.mod, nhefs, "response")
+
+# Calculate inverse probability weights
+nhefs$ipw <- ifelse(nhefs$qsmk == 1, 1/nhefs$phat, 1/(1 - nhefs$phat))
+  mean_ipw <- round(mean(nhefs$ipw),2)
+  min_ipw <- round(min(nhefs$ipw),2)
+  max_ipw <- round(max(nhefs$ipw),2)
+
+cat(sprintf("Mean of IP weights: %0.2f\n", mean_ipw))
+cat(sprintf("Minimum of IP weights: %0.2f\n", min_ipw))
+cat(sprintf("Maximum of IP weights: %0.2f\n", max_ipw))
+
+# Calculate stabilized weights
+p_treatment <- mean(nhefs$qsmk)
+nhefs$sw <- ifelse(nhefs$qsmk == 1, p_treatment/nhefs$phat, (1 - p_treatment)/(1 - nhefs$phat))
+  mean_sw <- round(mean(nhefs$sw),2)
+  min_sw <- round(min(nhefs$sw),2)
+  max_sw <- round(max(nhefs$sw),2)
+
+cat(sprintf("Mean of standardized weights: %0.2f\n", mean_sw))
+cat(sprintf("Minimum of standardized weights: %0.2f\n", min_sw))
+cat(sprintf("Maximum of standardized weights: %0.2f\n", max_sw))
+```
+
+Finally, we plot the distributions of the IP weights and stabilized IP weights.
+
+```{R}
+
+# Plot distribution of IPWs and stabilized weights
+library(ggplot2)
+
+ggplot(nhefs) +
+  geom_histogram(aes(x = ipw, fill = "IP Weights"), bins = 40, alpha = 0.6, position = 'identity') +
+  geom_histogram(aes(x = sw, fill = "Stabilized IP Weights"), bins = 40, alpha = 0.6, position = 'identity') +
+  labs(x = "Weights", y = "", title = "Histogram of IP Weights vs. Stabilized IP Weights") +
+  scale_fill_manual("",
+                    breaks = c("IP Weights", "Stabilized IP Weights"),
+                    values = c("IP Weights" = "cornflowerblue", "Stabilized IP Weights" = "coral2")) +
+  theme_minimal()
+
+```
+
+
+Under IP weighting, the size of the pseudo-population is twice that of the original study population, which reflects the fact that the average of the weights $W^A =2$. Under stabilized IP weighting, the size of the pseudo-population equals that of the study population, which reflects the fact that the average of the weights $SW^A=1$. The IP weights range from `r min_ipw` to `r max_ipw` while the stabilized IP weights range from `r min_sw` to `r max_sw`; the narrower range and less skewed distribution of stabilized IP weights is expected due to the stabilizing factor $P(A=a)$ in the numerator of the weight calculation.
+
+:::
+
+{{< pagebreak >}}
+
+### b) Calculate the average treatment effect (ATE) using your IPW estimator; make sure to report both point estimates and estimated standard errors. Use both the stabilized and non-stabilized weights to construct distinct estimators for this exercise.
+
+:::{.callout-note title="Answer"}
+
+To estimate $\mathbb{E}_{p s}[Y \mid A=1]-\mathbb{E}_{p s}[Y \mid A=0]$ in the pseudo-population, we fit the (saturated) linear mean model $\mathrm{E}[Y \mid A]=\theta_0+\theta_1 A$ by weighted least squares and report $\hat{\theta}_1=\hat{\psi}_{n}^{IPW}$. For IP weighting, individuals are weighted by their estimated IP weights $\widehat{W}^A$. For stabilized IP weighting, individuals are weighted by their estimated stabilized IP weights $\widehat{SW}^A$.
+
+```{R}
+
+# Estimate ATE via WLS using IP weights
+model_ipw <- lm(wt82_71 ~ qsmk, data = nhefs, weights = ipw)
+
+  # Extract results
+  qsmk_coeff <- round(summary(model_ipw)$coefficients["qsmk", "Estimate"],4)
+  qsmk_se <- round(summary(model_ipw)$coefficients["qsmk", "Std. Error"],4)
+  cat(sprintf("IPW Coefficient for qsmk: %0.4f, Non-Robust SE: %0.4f\n, Robust SE: see part (c)", qsmk_coeff, qsmk_se))
+
+# Estimate ATE via WLS using stabilized weights
+model_sw <- lm(wt82_71 ~ qsmk, data = nhefs, weights = sw)
+
+# Extract results
+qsmk_coeff <- round(summary(model_sw)$coefficients["qsmk", "Estimate"],4)
+qsmk_se <- round(summary(model_sw)$coefficients["qsmk", "Std. Error"],4)
+cat(sprintf("SW Coefficient for qsmk: %0.4f, Non-Robust SE: %0.4f\n, Robust SE: see part (c)", qsmk_coeff, qsmk_se))
+
+```
+
+&nbsp;
+
+*Note: Robust SEs for IPW with stabilized and non-stabilized weights are calculated below in part (c). **Robust SEs are correct to report in practice**.*
+
+:::
+
+{{< pagebreak >}}
+
+### c) List two methods for estimating the variance of the ATE and provide a $95 \%$ confidence interval (CI) for the ATE with one of those methods, using both stabilized and non-stabilized IP weights.
+
+:::{.callout-note title="Answer"}
+
+To estimate the variance of the ATE and construct a 95% confidence interval, we have the following two methods outlined in @hernan2023causal:
+
+1. **Nonparametric Bootstrapping**: Nonparametric bootstrapping involves resampling the dataset with replacement many times and calculating the ATE for each resampled dataset. The distribution of these bootstrapped ATE estimates is then used to derive the variance of the ATE estimate and construct confidence intervals. The advantage of this approach is that it does not require assumptions about the distribution of the estimator, but it is computationally intensive to perform in practice.
+
+2. **Robust Variance Estimator**: Robust variance estimation, commonly applied in GEE with an independent working correlation, offers an alternative method to estimate the variance of the ATE accounting for the weighting scheme. The advantage of this approach is its ease of implementation (thanks to widespread support in statistical software), but it tends to yield conservative confidence intervals.
+
+First, we'll implement the nonparametric bootstrap (95% CIs are reported for a normal-based and quantile-based calculation of the interval, which yield similar results):
+
+```{R, cache=T}
+
+# Set bootstrap parameters
+set.seed(2024)  
+n_bootstraps <- 1000 
+ate_ipw_bootstraps <- numeric(n_bootstraps)
+ate_sw_bootstraps <- numeric(n_bootstraps)
+
+for (i in 1:n_bootstraps) {
+  
+  # Resample with replacement
+  sampled_indices <- sample(nrow(nhefs), replace = TRUE)
+  bootstrap_sample <- nhefs[sampled_indices, ]
+  
+  # Recalculate weights based on the bootstrap sample
+    # IP weights
+    bootstrap_sample$ipw <- ifelse(bootstrap_sample$qsmk == 1, 1/bootstrap_sample$phat, 1/(1 - bootstrap_sample$phat))
+    
+    # Stabilized IP weights
+    p_treatment_bootstrap <- mean(bootstrap_sample$qsmk)
+    bootstrap_sample$sw <- ifelse(bootstrap_sample$qsmk == 1, p_treatment_bootstrap/bootstrap_sample$phat, (1 - p_treatment_bootstrap)/(1 - bootstrap_sample$phat))
+  
+  # Fit linear outcome models and calculate ATE for IPW and SW
+  model_ipw_bs <- lm(wt82_71 ~ qsmk, data = bootstrap_sample, weights = bootstrap_sample$ipw)
+  model_sw_bs <- lm(wt82_71 ~ qsmk, data = bootstrap_sample, weights = bootstrap_sample$sw)
+  
+  ate_ipw_bootstraps[i] <- coef(model_ipw_bs)["qsmk"]
+  ate_sw_bootstraps[i] <- coef(model_sw_bs)["qsmk"]
+}
+
+# Plot bootstrap distribution
+ggplot(data.frame(ate_ipw_bootstraps), aes(x = ate_ipw_bootstraps)) +
+  geom_histogram(binwidth = .1, fill = "cornflowerblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of IPW/SW Bootstrap Estimates of ATE",
+       x = "ATE Estimator Values",
+       y = "Frequency")
+
+# Method 1 (normal-based) for constructing bootstrap CI
+
+  # Estimate the standard error of the IPW estimator
+  se_ipw <- sd(ate_ipw_bootstraps)
+  print(paste("Bootstrap standard error [IPW]:", round(se_ipw,4)))
+  
+  # Estimate the standard error of the SW estimator
+  se_sw <- sd(ate_sw_bootstraps)
+  print(paste("Bootstrap standard error [S-IPW]:", round(se_sw,4)))
+
+  # Construct 95% Confidence Interval for the ATE 
+  ci_lower <- round(mean(ate_ipw_bootstraps) - qt(0.975, n_bootstraps-2) * se_ipw,4)
+  ci_upper <- round(mean(ate_ipw_bootstraps) + qt(0.975, n_bootstraps-2) * se_ipw,4)
+  print(paste("Normal-based 95% CI for ATE [IPW and S-IPW]: [", ci_lower, ",", ci_upper, "]"))
+
+# Method 2 (quantile-based) for constructing bootstrap CI
+ci_lower <- quantile(ate_ipw_bootstraps, probs = 0.025)
+ci_upper <- quantile(ate_ipw_bootstraps, probs = 0.975)
+print(paste("Quantile-based 95% CI for ATE [IPW and S-IPW]: [", round(ci_lower,4), ",", round(ci_upper,4), "]"))
+
+```
+
+*Note: Bootstrap distributions are the same for IP and S-IPW weighting, so 95% CIs are equivalent*
+
+&nbsp;
+
+Next, we'll implement the robust variance estimator:
+
+```{R, message=F, warning=F}
+
+library(sandwich)
+library(lmtest)
+
+# Coefficient test with robust variance estimation for IPW model
+coeftest_ipw <- coeftest(model_ipw, vcov = vcovHC(model_ipw, type = "HC0"))
+
+  # Extract estimate and robust standard error for ATE
+  estimate_ipw <- coeftest_ipw["qsmk", "Estimate"]
+  std_error_ipw <- coeftest_ipw["qsmk", "Std. Error"]
+  print(paste("Robust standard error [IPW]:", round(std_error_ipw,4)))
+  
+  # Calculate 95% CI for ATE
+  alpha <- 0.05
+  ci_lower_ipw <- estimate_ipw - qnorm(1-alpha/2) * std_error_ipw
+  ci_upper_ipw <- estimate_ipw + qnorm(1-alpha/2) * std_error_ipw
+  
+  cat(sprintf("IP Weighted ATE Estimate: %0.4f, 95%% CI: [%0.4f, %0.4f]\n", estimate_ipw, ci_lower_ipw, ci_upper_ipw))
+
+# Coefficient test with robust variance estimation for SW model
+coeftest_sw <- coeftest(model_sw, vcov = vcovHC(model_sw, type = "HC0"))
+
+  # Extract the estimate and robust standard error for ATE
+  estimate_sw <- coeftest_sw["qsmk", "Estimate"]
+  std_error_sw <- coeftest_sw["qsmk", "Std. Error"]
+  print(paste("Robust standard error [S-IPW]:", round(std_error_sw,4)))
+  
+  # Calculate 95% CI for ATE 
+  ci_lower_sw <- estimate_sw - qnorm(1-alpha/2) * std_error_sw
+  ci_upper_sw <- estimate_sw + qnorm(1-alpha/2) * std_error_sw
+  
+  cat(sprintf("Stabilized IP Weighted ATE Estimate: %0.4f, 95%% CI: [%0.4f, %0.4f]\n", estimate_sw, ci_lower_sw, ci_upper_sw))
+
+```
+
+:::
+
+{{< pagebreak >}}
+
+### d) Contrast the estimates derived from both stabilized and non-stabilized weights. Share your observations.
+
+:::{.callout-note title="Answer"}
+
+The non-stabilized and stabilized IP weights produce the same estimates ($\hat{\psi}_{n}^{IPW}=\hat{\psi}_{n}^{SW}=3.4405$) and 95% confidence intervals for the ATE. This was true for both the confidence intervals based on the nonparametric bootstrap (95% CI: 2.3876, 4.5137) and the robust variance estimator (95% CI: 2.4106, 4.4705). Equivalence of the estimates and confidence intervals for non-stabilized vs. stabilized IP weights is expected whenever the weighted outcome model is saturated (due to a binary treatment effect). We would expect to see narrower 95% confidence intervals for the stabilized WLS model in cases where the weighted outcome model is not saturated (i.e., for time-varying or continuous treatments).
+
+:::
+
+{{< pagebreak >}}
+
+2. Doubly Robust Estimation: Recall that the doubly robust (DR) estimator,
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}}=\mathrm{P}_{n}\left[\left(\frac{A}{\hat{g}(L)}-\frac{1-A}{1-\hat{g}(L)}\right)\left\{Y-\hat{m}_{A}(L)\right\}+\left\{\hat{m}_{1}(L)-\hat{m}_{0}(L)\right\}\right],
+$$
+
+which requires estimation of the outcome regression function $m_{A}(L)=\mathbb{E}[Y \mid A, L]$ beyond the propensity score $g(L)=\mathbb{P}(A=1 \mid L)$ required for IPW estimation, can be expressed as an augmented version of the IPW estimator:
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}}=\hat{\psi}_{n}^{\mathrm{IPW}}+\mathrm{P}_{n}\left[\left(1-\frac{A}{p}\right) \hat{m}_{1}(L)-\left(1-\frac{1-A}{1-p}\right) \hat{m}_{0}(L)\right] .
+$$
+
+In this question, we will consider the properties of this DR estimator relative to those of the IPW estimators explored above, and compare its performance to that of the IPW estimator.
+
+### a) Using a linear model, estimate $m_{A}(L)=\mathbb{E}[Y \mid A=a, L=l]$ where the outcome $Y$ and treatment $A$ are as before, that is, weight gain and smoking cessation, respectively. Use the same set of potential confounders $L$ as in the previous exercise, incorporating both linear and quadratic terms for continuous covariates such as age, weight, intensity, and duration of smoking, as well as an interaction term between smoking cessation and smoking intensity. Extract predictions from this fitted model necessary to compute the DR estimator.
+
+:::{.callout-note title="Answer"}
+
+```{R}
+
+# Fit linear outcome regression model
+outcome.mod <- lm(wt82_71 ~ qsmk + sex + age + I(age^2) + race + factor(education) + smokeintensity + I(smokeintensity^2) + smokeyrs + I(smokeyrs^2) + factor(active) + factor(exercise) + wt71 + I(wt71^2) + qsmk:smokeintensity,
+                    data = nhefs)
+
+summary(outcome.mod)
+
+# Predict expected outcomes under treatment and control for each individual
+nhefs$ma_hat <- predict(outcome.mod, newdata = nhefs)
+nhefs$m1_hat <- predict(outcome.mod, newdata = transform(nhefs, qsmk = 1))
+nhefs$m0_hat <- predict(outcome.mod, newdata = transform(nhefs, qsmk = 0))
+
+```
+
+:::
+
+{{< pagebreak >}}
+
+### b) Compute the DR estimator using the appropriate predictions from the fitted outcome regression models from (a) above and the IP weights that were previously calculated in the preceding question. Report the point estimate from this DR estimator and compare it to the point estimates from the two forms of the IPW estimator considered previously.
+
+:::{.callout-note title="Answer"}
+
+```{R}
+
+# Extract and rename variables
+dat_pred <- with(nhefs, data.frame(
+  m1_hat = m1_hat,
+  m0_hat = m0_hat,
+  ma_hat = ma_hat,
+  p = phat,
+  Y = wt82_71,
+  A = qsmk
+))
+
+# Compute doubly robust estimate
+psi_dr <- with(dat_pred, mean((A / p - (1 - A) / (1 - p)) * (Y - ma_hat) + (m1_hat - m0_hat)))
+
+```
+
+The point estimate for the DR estimator ($\hat{\psi}^{DR}=$ `r round(psi_dr,4)`) is very similar to the IPW estimator ($\hat{\psi}^{IPW}=\hat{\psi}^{SW}=$ `r qsmk_coeff`) considered previously.
+
+:::
+
+### c) Compute the standard error of the DR estimator as well as those of the IPW estimators considered before. You may compute these analytically or use the bootstrap; if opting for the latter, state the conditions under which the bootstrap estimates of the standard error are valid. Compare the standard error estimates and use these to construct 95\% confidence intervals for the ATE.
+
+:::{.callout-note title="Answer"}
+
+We compute bootstrap standard errors for the DR estimator and IPW estimators. The bootstrap estimates of the standard error are valid under the following conditions:
+
+1. The bootstrap distribution of the DR estimator is approximately symmetric.
+2. The sample size is large enough such that the bootstrap distribution approximates normality.
+
+We can also construct distribution-free CIs from the quantile of the bootstrap samples.
+
+```{R, cache=T}
+
+# Set bootstrap parameters
+set.seed(2024) 
+n_bootstraps <- 1000 
+psi_dr_bootstraps <- numeric(n_bootstraps)
+
+for (i in 1:n_bootstraps) {
+  
+  # Resample with replacement
+  sample_indices <- sample(nrow(dat_pred), replace = TRUE)
+  bootstrap_sample <- dat_pred[sample_indices, ]
+  
+  # Recalculate DR estimator for the bootstrap sample
+  psi_dr_bootstrap <- with(bootstrap_sample, mean((A / p - (1 - A) / (1 - p)) * (Y - ma_hat) + (m1_hat - m0_hat)))
+  psi_dr_bootstraps[i] <- psi_dr_bootstrap
+}
+
+# Plot bootstrap distribution
+ggplot(data.frame(psi_dr_bootstraps), aes(x = psi_dr_bootstraps)) +
+  geom_histogram(binwidth = .1, fill = "cornflowerblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of DR Estimator Bootstrap Estimates",
+       x = "DR Estimator Values",
+       y = "Frequency")
+
+# Method 1 (normal-based) for constructing bootstrap CI
+
+  # Estimate the standard error of the DR estimator
+  se_psi_dr <- sd(psi_dr_bootstraps)
+  print(paste("Bootstrap standard error [DR]:", round(se_psi_dr,4)))
+  
+  # Construct 95% Confidence Interval for the ATE 
+  ci_lower <- round(mean(psi_dr_bootstraps) - qt(0.975, n_bootstraps-2) * se_psi_dr,4)
+  ci_upper <- round(mean(psi_dr_bootstraps) + qt(0.975, n_bootstraps-2) * se_psi_dr,4)
+  print(paste("Normal-based 95% CI for ATE [DR]: [", ci_lower, ",", ci_upper, "]"))
+
+# Method 2 (quantile-based) for constructing bootstrap CI
+ci_lower <- quantile(psi_dr_bootstraps, probs = 0.025)
+ci_upper <- quantile(psi_dr_bootstraps, probs = 0.975)
+print(paste("Quantile-based 95% CI for ATE [DR]: [", round(ci_lower,4), ",", round(ci_upper,4), "]"))
+
+```
+
+Using nonparametric bootstrapping, we have $\hat{\psi}^{DR}=$ `r round(psi_dr,4)` (95% CI: 2.4974, 4.4435; SE= `r round(se_psi_dr,4)`) compared to $\hat{\psi}^{IPW}=\hat{\psi}^{SW}=$ `r qsmk_coeff` (95% CI: 2.3876, 4.5137; SE= `r round(se_ipw,4)`). The confidence interval is narrower (and the standard error is smaller) for $\hat{\psi}^{DR}$, indicating a gain in precision for the doubly-robust estimator.
+
+:::
+
+{{< pagebreak >}}
+
+# Question 2: Standardization and Parametric G-Computation
+
+We will next explore estimation using standardization (i.e., the plug-in estimator) as an alternative to IP weighting. The objective will be to estimate the average treatment effect (ATE) of smoking cessation, denoted $A$, on weight gain $Y$. We will again carry this out using a subset of the NHEFS data from 1,629 cigarette smokers. Out of these, 1,566 individuals had their weight recorded during the follow-up visit and were therefore not subject to censoring $(C=0)$. Similar to the problem before, we will ignore those individuals and assume there is no selection bias.
+
+Assuming exchangeability and positivity, conditional on the observed covariates $L$, the standardized mean outcome for the treated group consistently estimates the mean outcome had all participants been treated. Similarly, the standardized mean outcome in the untreated group consistently estimates the mean outcome if everyone had remained untreated. The formula to determine the standardized mean for individuals at treatment level $a$ is
+
+$$
+\sum_{l} E[Y \mid A=a, L=l] \times \mathbb{P}[L=l]
+$$
+
+## Part 1: Theory
+
+### 1. Again assuming that $A$ is discrete with a finite number of values and under positivity, show that the standardized mean for treatment level $a\left(\sum_{l} \mathbb{E}[Y \mid A=a, L=l] \times \mathbb{P}[L=l]\right)$ and the IP weighted mean of $Y\left(\mathbb{E}\left[\frac{\mathbb{I}(A=a) Y}{\mathbb{P}[A \mid L]}\right]\right)$ are equivalent.
+
+:::{.callout-note title="Answer"}
+
+By definition of expectation (and because for any $a^\prime$ other than $a$ the quantity $\mathbb{I}(a^\prime=a)$ is zero), we have:
+
+$$
+\begin{aligned}
+\mathbb{E}\left[\frac{\mathbb{I}(A=a) Y}{\mathbb{P}[A \mid L]}\right]
+&=\sum_l \frac{1}{\mathbb{P}[a \mid l]}\mathbb{E}[Y \mid A=a, L=l] \times\mathbb{P}[a \mid l] \times \mathbb{P}[L=l]\\
+&=\sum_l\mathbb{E}[Y \mid A=a, L=l] \times \mathbb{P}[L=l]
+\end{aligned}
+$$ 
+:::
+
+### 2. Under conditional exchangeability and consistency, show that the standardized mean is equal to the mean of the potential outcome.
+
+:::{.callout-note title="Answer"}
+
+$$
+\begin{aligned}
+\mathbb{E}\left[Y^a\right]&=\sum_l \mathbb{E}\left[Y^a \mid L=l\right] \mathbb{P}[L=l] \\
+&=\sum_l \mathbb{E}\left[Y^a \mid A=a, L=l\right] \mathbb{P}[L=l] \quad \text{ By positivity and conditional exchangeability } (Y^a \perp\!\!\!\perp A | L). \\
+&=\sum_l \mathbb{E}[Y \mid A=a, L=l] \mathbb{P}[L=l] \quad \quad \text{ By consistency } (Y=Y^a).
+\end{aligned}
+$$
+
+:::
+
+### 3. Recall that the doubly robust estimator,
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}}=\mathrm{P}_{n}\left[\left(\frac{A}{\hat{g}(L)}-\frac{1-A}{1-\hat{g}(L)}\right)\left\{Y-\hat{m}_{A}(L)\right\}+\left\{\hat{m}_{1}(L)-\hat{m}_{0}(L)\right\}\right]
+$$
+
+### can be expressed as a modified version of the standardization or plug-in (PI)estimator:
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}}=\hat{\psi}_{n}^{\mathrm{PI}}+\mathrm{P}_{n}\left[\left(\frac{A}{\hat{g}(L)}-\frac{1-A}{1-\hat{g}(L)}\right)\left\{Y-\hat{m}_{A}(L)\right\}\right] .
+$$
+
+### When the model for the outcome is correctly specified, the doubly robust estimator seems to do little to improve upon the standardization estimator. State conditions under which you might prefer one estimator over the other.
+
+:::{.callout-note title="Answer"}
+
+When the regression function $\hat{m}$ is accurately estimated using a **correctly specified parametric regression model**, the resultant plug-in estimator $\hat{\psi}_n^{\mathrm{PI}}=\mathrm{P}_n(\hat{f})$ for $f=m_1-m_0$ has the following desirable properties: 
+
+(1) $\sqrt{n}$-consistent for the statistical estimand $\psi^{\text {ATE }}$
+(2) asymptotically normal
+(3) asymptotically efficient
+
+The requirement for a correctly specified parametric regression model, however, is stringent in that this generally requires extensive domain knowledge and/or previous empirical findings. Further, it precludes the use of modern machine learning techniques to flexibly estimate $\hat{m}$ in cases where parametric regression models do not provide a correct representation of complex reality. 
+
+The doubly-robust estimator $\hat{\psi}_{n}^{\mathrm{DR}}$ provides an assumption-lean alternative to the plug-in as long as the regression estimator $\hat{m}_a$ converges to some fixed function at any rate. It is therefore preferable in cases where there is uncertainty in model specification or the need for nonparametric estimation.
+
+As a final note, for Bernoulli experiments and plug-ins based on models with an intercept and main effect for treatment, parametric plug-in estimators exhibit the same properties as the doubly-robust estimator (even under misspecification of the regression estimator $\hat{m}_a$) and will suffice.
+
+:::
+
+{{< pagebreak >}}
+
+## Part 2: Application
+
+1. We will next implement the standardization estimator and compare it to the IP weighting approach explored in the previous question.
+
+### a) Using a linear model, estimate $\mathbb{E}[Y \mid A=a, L=l]$ considering the mean weight gain with treatment $A$ and all 9 confounders in $L$ as covariates. Incorporate both linear and quadratic terms for continuous covariates such as age, weight, intensity, and duration of smoking. Additionally, include an interaction term between smoking cessation and smoking intensity.
+
+### Note that to compute $\sum_{l} \mathbb{E}[Y \mid A=a, L=l] \times \mathbb{P}[L=l]$ we only need to compute the average:
+
+$$
+\frac{1}{n} \sum_{i=1}^{n} \mathbb{E}\left[Y \mid A=a, L_{i}\right]
+$$
+
+### Given $n$ as the study's participant count. This weighted mean is equivalent to $\sum_{l} E[Y \mid$ $A=a, L=l] \times \mathbb{P}[L=l]$ because it can be expressed via iterated expectation as $\mathbb{E}[\mathbb{E}[Y \mid$ $A=a, L]]$.
+
+:::{.callout-note title="Answer"}
+
+```{R}
+
+# Fit linear outcome regression model
+outcome.mod <- lm(wt82_71 ~ qsmk + sex + age + I(age^2) + race + factor(education) + smokeintensity + I(smokeintensity^2) + smokeyrs + I(smokeyrs^2) + factor(active) + factor(exercise) + wt71 + I(wt71^2) + qsmk:smokeintensity,
+                    data = nhefs)
+
+# Predict expected outcomes under treatment and control for each individual
+nhefs$ma_hat <- predict(outcome.mod, newdata = nhefs)
+nhefs$m1_hat <- predict(outcome.mod, newdata = transform(nhefs, qsmk = 1))
+nhefs$m0_hat <- predict(outcome.mod, newdata = transform(nhefs, qsmk = 0))
+
+# Extract and rename variables
+dat_pred <- with(nhefs, data.frame(
+  m1_hat = m1_hat,
+  m0_hat = m0_hat,
+  ma_hat = ma_hat,
+  p = phat, # OR mean(nhefs$qsmk) for DR?
+  Y = wt82_71,
+  A = qsmk 
+))
+
+# Compute plug-in estimate
+psi_pi <- with(dat_pred, mean(m1_hat - m0_hat))
+print(paste("Point Estimate:", round(psi_pi,4)))
+
+
+```
+
+:::
+
+### b) Compare this with your estimate of the average treatment effect of smoking cessation on weight gain using IP weighting. Can you explain any similarities or differences, and elaborate on the distinct approaches?
+
+:::{.callout-note title="Answer"}
+
+* $\hat{\psi}_n^{PI}= 3.5174$ 
+* $\hat{\psi}_{n}^{IPW}=\hat{\psi}_{n}^{SW} = 3.4405$
+* $\hat{\psi}_n^{DR}=3.4573$
+
+We have $\hat{\psi}_n^{PI}= 3.5173$ and $\hat{\psi}_{n}^{IPW}=\hat{\psi}_{n}^{SW} = 3.4405$. The estimates are similar, suggesting that both approaches are capturing the same underlying causal effect but through different mechanisms. IPW creates a pseudo-population where the treatment assignment is independent of the covariates by weighting individuals. Alternatively, standardization directly models the outcome as a function of the treatment and covariates, predicting the outcome under both treatment and control for each individual and then averaging these predictions. 
+
+:::
+
+### c) We've shown that the IP weighting mean and the standardized mean are equivalent. Does this mean the results of IP weighting and G-computation (standardization) will always match? Why or why not?
+
+:::{.callout-note title="Answer"}
+
+While the IP weighting mean and the standardized mean are theoretically equivalent under certain conditions, they will not always match exactly in practice. This is largely due to model specification, as IPW heavily relies on correct specification of the propensity score model while standardization heavily relies on correct specification of the outcome model to ensure unbiased estimation of the ATE. IP weighting can also introduce variability in the estimates when some subjects have very small or very large propensity scores (i.e., extreme weights). On the other hand, standardization can be more efficient if the outcome model is well-specified.
+
+:::
+
+{{< pagebreak >}}
+
+2. We can construct a doubly robust (DR) estimator of the ATE by first determining the propensity score $g(L)=\mathbb{P}(A=1 \mid L)$ (e.g., via logistic regression), fitting an outcome regression model (e.g., a generalized linear model (GLM) paired with a canonical link) $m_{A}(L)=\mathbb{E}[Y \mid$ $A, L]$, and then computing the DR estimator as
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}}=\mathrm{P}_{n}\left[\left(\frac{A}{\hat{g}(L)}-\frac{1-A}{1-\hat{g}(L)}\right)\left\{Y-\hat{m}_{A}(L)\right\}+\left\{\hat{m}_{1}(L)-\hat{m}_{0}(L)\right\}\right]
+$$
+
+where $\hat{m}_{a}(L)$ is the fitted outcome regression estimator evaluated at $A=1$ or $A=0$ and $\hat{g}(L)$ is the estimated propensity score.
+
+### a) What does the term "doubly robust" refer to?
+
+:::{.callout-note title="Answer"}
+
+The term "doubly robust" refers to an estimator's ability to yield consistent estimates if either the propensity score model $\hat{g}(L)$ or the outcome model $(\hat{m}_{A}(L), \hat{m}_{1}(L), \hat{m}_{0}(L))$ is correctly specified, effectively offering two opportunities for obtaining consistent estimation.
+
+:::
+
+### b) Implement the doubly robust estimator above and use it to compute an estimate of the ATE. Compute its standard error and report your point estimate, estimated standard error, and 95\% (analytic) confidence intervals.
+
+The doubly robust estimator's variance can be estimated by computing the empirical variance of the augmented inverse probability weighted (AIPW) scores. The DR estimator given as:
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}}=\mathrm{P}_{n}\left[\left(\frac{A}{\hat{g}(L)}-\frac{1-A}{1-\hat{g}(L)}\right)\left\{Y-\hat{m}_{A}(L)\right\}+\left\{\hat{m}_{1}(L)-\hat{m}_{0}(L)\right\}\right]
+$$
+
+The variance can be approximated as the empirical variance of the quantity inside the expectation:
+
+$$
+\hat{\text{Var}}\left(\hat{\psi}_{n}^{\mathrm{DR}}\right) = \frac{1}{n}\text{Var}_{n}\left[\left(\frac{A}{\hat{g}(L)}-\frac{1-A}{1-\hat{g}(L)}\right)\left\{Y-\hat{m}_{A}(L)\right\}+\left\{\hat{m}_{1}(L)-\hat{m}_{0}(L)\right\}\right]
+$$
+
+where $\text{Var}_{n}[\cdot]$ denotes the sample variance. Finally, for analytical 95% CIs, we use the formula:
+
+$$
+\hat{\psi}_{n}^{\mathrm{DR}} \pm Z_{1-\alpha /2} \times \sqrt{\frac{\hat{\text{Var}}\left(\hat{\psi}_{n}^{\mathrm{DR}}\right)}{n}}
+$$
+
+```{R}
+
+# Compute doubly robust estimate
+psi_dr <- with(dat_pred, mean((A / p - (1 - A) / (1 - p)) * (Y - ma_hat) + (m1_hat - m0_hat)))
+
+# Standard error & analytic 95% confidence intervals
+# Compute the AIPW scores
+aipw_scores <- with(dat_pred, (A / p - (1 - A) / (1 - p)) * (Y - ma_hat) + (m1_hat - m0_hat))
+
+# Compute variance and SE of AIPW scores
+var_aipw <- var(aipw_scores)
+se_dr <- sqrt(var_aipw / length(aipw_scores))
+
+# Compute 95% confidence interval
+ci_lower <- psi_dr - 1.96 * se_dr
+ci_upper <- psi_dr + 1.96 * se_dr
+
+print(paste("Point Estimate:", round(psi_dr, 4)))
+print(paste("Estimated Standard Error:", round(se_dr, 4)))
+print(paste("95% Confidence Interval: [", round(ci_lower, 4), ",", round(ci_upper, 4), "]"))
+
+```
+
+{{< pagebreak >}}
+
+# References
+
+*This assignment received assistance from ChatGPT for debugging code and compiling* \LaTeX.
+
+::: {#refs}
+:::
+
+
+
